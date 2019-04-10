@@ -46,6 +46,7 @@ Data::~Data() throw ()
   }
   num_field_data_ = 0;
 
+  delete particle_descr;
   delete particle_data_;
 
   particle_data_ = 0;
