@@ -58,6 +58,8 @@
 #include <stdexcept>
 #include <vector>
 
+#include "cello.hpp"
+
 /** Library version: 0xMmP (M=Major,m=minor,P=patch) */
 #define NANOFLANN_VERSION 0x130
 
@@ -79,6 +81,11 @@ namespace nanoflann {
 template <typename T> T pi_const() {
   return static_cast<T>(3.14159265358979323846);
 }
+
+//template <class T>
+  //inline void pupsimple(PUP::er& p){
+  //  p((char *)this, sizeof(T));
+  //}
 
 template <typename T>
 struct PointCloud
@@ -109,7 +116,11 @@ struct PointCloud
         template <class BBOX>
         bool kdtree_get_bbox(BBOX& /* bb */) const { return false; }
 
+        inline void pup(PUP::er& p){
+          p((char *)this, sizeof(PointCloud));
+        }
 };
+PUPbytes(PointCloud);
 
 /**
  * Traits if object is resizable and assignable (typically has a resize | assign
@@ -233,7 +244,12 @@ public:
   }
 
   inline DistanceType worstDist() const { return dists[capacity - 1]; }
+
+  inline void pup(PUP::er& p){
+    p((char *)this, sizeof(KNNResultSet)); // AJE pointers
+  }
 };
+PUPbytes(KNNResultSet);
 
 /** operator "<" for std::sort() */
 struct IndexDist_Sorter {
@@ -242,7 +258,12 @@ struct IndexDist_Sorter {
   inline bool operator()(const PairType &p1, const PairType &p2) const {
     return p1.second < p2.second;
   }
+
+  inline void pup(PUP::er& p){
+    p((char *)this, sizeof(IndexDist_Sorter));
+  }
 };
+PUPbytes(IndexDist_Sorter);
 
 /**
  * A result-set class used when performing a radius based search.
@@ -300,7 +321,12 @@ public:
                                  IndexDist_Sorter());
     return *it;
   }
+
+  inline void pup(PUP::er& p){
+    p((char *)this, sizeof(RadiusResultSet));
+  }
 };
+PUPbytes(RadiusResultSet);
 
 /** @} */
 
@@ -343,7 +369,12 @@ template <typename T> void load_value(FILE *stream, std::vector<T> &value) {
 /** @addtogroup metric_grp Metric (distance) classes
  * @{ */
 
-struct Metric {};
+struct Metric {
+    inline void pup(PUP::er& p){
+      p((char *)this, sizeof(Metric));
+    }
+  };
+  PUPbytes(Metric);
 
 /** Manhattan distance functor (generic version, optimized for
  * high-dimensionality data sets). Corresponding distance traits:
@@ -394,7 +425,11 @@ struct L1_Adaptor {
   inline DistanceType accum_dist(const U a, const V b, const size_t) const {
     return std::abs(a - b);
   }
-};
+    inline void pup(PUP::er& p){
+      p((char *)this, sizeof(L1_Adaptor)); // AJE reference
+    }
+  };
+  PUPbytes(L1_Adaptor);
 
 /** Squared Euclidean distance functor (generic version, optimized for
  * high-dimensionality data sets). Corresponding distance traits:
@@ -442,7 +477,11 @@ struct L2_Adaptor {
   inline DistanceType accum_dist(const U a, const V b, const size_t) const {
     return (a - b) * (a - b);
   }
-};
+    inline void pup(PUP::er& p){
+      p((char *)this, sizeof(L2_Adaptor)); // AJE reference
+    }
+  };
+  PUPbytes(L2_Adaptor);
 
 /** Squared Euclidean (L2) distance functor (suitable for low-dimensionality
  * datasets, like 2D or 3D point clouds) Corresponding distance traits:
@@ -474,7 +513,11 @@ struct L2_Simple_Adaptor {
   inline DistanceType accum_dist(const U a, const V b, const size_t) const {
     return (a - b) * (a - b);
   }
-};
+    inline void pup(PUP::er& p){
+      p((char *)this, sizeof(L2_Simple_Adaptor)); // AJE reference
+    }
+  };
+  PUPbytes(L2_Simple_Adaptor);
 
 /** SO2 distance functor
  *  Corresponding distance traits: nanoflann::metric_SO2
@@ -508,7 +551,11 @@ struct SO2_Adaptor {
       result += 2 * PI;
     return result;
   }
-};
+    inline void pup(PUP::er& p){
+      p((char *)this, sizeof(SO2_Adaptor)); // AJE reference
+    }
+  };
+  PUPbytes(SO2_Adaptor);
 
 /** SO3 distance functor (Uses L2_Simple)
  *  Corresponding distance traits: nanoflann::metric_SO3
@@ -535,38 +582,62 @@ struct SO3_Adaptor {
   inline DistanceType accum_dist(const U a, const V b, const size_t idx) const {
     return distance_L2_Simple.accum_dist(a, b, idx);
   }
-};
+    inline void pup(PUP::er& p){
+      p((char *)this, sizeof(SO3_Adaptor)); // AJE reference
+    }
+  };
+  PUPbytes(SO3_Adaptor);
 
 /** Metaprogramming helper traits class for the L1 (Manhattan) metric */
 struct metric_L1 : public Metric {
   template <class T, class DataSource> struct traits {
     typedef L1_Adaptor<T, DataSource> distance_t;
   };
-};
+    inline void pup(PUP::er& p){
+      p((char *)this, sizeof(metric_L1));
+    }
+  };
+  PUPbytes(metric_L1);
 /** Metaprogramming helper traits class for the L2 (Euclidean) metric */
 struct metric_L2 : public Metric {
   template <class T, class DataSource> struct traits {
     typedef L2_Adaptor<T, DataSource> distance_t;
   };
-};
+    inline void pup(PUP::er& p){
+      p((char *)this, sizeof(metric_L2));
+    }
+  };
+  PUPbytes(metric_L2);
 /** Metaprogramming helper traits class for the L2_simple (Euclidean) metric */
 struct metric_L2_Simple : public Metric {
   template <class T, class DataSource> struct traits {
     typedef L2_Simple_Adaptor<T, DataSource> distance_t;
   };
-};
+    inline void pup(PUP::er& p){
+      p((char *)this, sizeof(metric_L2_Simple));
+    }
+  };
+  PUPbytes(metric_L2_Simple);
 /** Metaprogramming helper traits class for the SO3_InnerProdQuat metric */
 struct metric_SO2 : public Metric {
   template <class T, class DataSource> struct traits {
     typedef SO2_Adaptor<T, DataSource> distance_t;
   };
-};
+    inline void pup(PUP::er& p){
+      p((char *)this, sizeof(metric_SO2));
+    }
+  };
+  PUPbytes(metric_SO2);
 /** Metaprogramming helper traits class for the SO3_InnerProdQuat metric */
 struct metric_SO3 : public Metric {
   template <class T, class DataSource> struct traits {
     typedef SO3_Adaptor<T, DataSource> distance_t;
   };
-};
+    inline void pup(PUP::er& p){
+      p((char *)this, sizeof(metric_SO3));
+    }
+  };
+  PUPbytes(metric_SO3);
 
 /** @} */
 
@@ -579,7 +650,11 @@ struct KDTreeSingleIndexAdaptorParams {
       : leaf_max_size(_leaf_max_size) {}
 
   size_t leaf_max_size;
-};
+    inline void pup(PUP::er& p){
+      p((char *)this, sizeof(KDTreeSingleIndexAdaptorParams));
+    }
+  };
+  PUPbytes(KDTreeSingleIndexAdaptorParams);
 
 /** Search options for KDTreeSingleIndexAdaptor::findNeighbors() */
 struct SearchParams {
@@ -593,7 +668,11 @@ struct SearchParams {
   float eps;   //!< search for eps-approximate neighbours (default: 0)
   bool sorted; //!< only for radius search, require neighbours sorted by
                //!< distance (default: true)
-};
+    inline void pup(PUP::er& p){
+      p((char *)this, sizeof(SearchParams));
+    }
+  };
+  PUPbytes(SearchParams);
 /** @} */
 
 /** @addtogroup memalloc_grp Memory allocation
@@ -734,7 +813,11 @@ public:
     T *mem = static_cast<T *>(this->malloc(sizeof(T) * count));
     return mem;
   }
-};
+    inline void pup(PUP::er& p){
+      p((char *)this, sizeof(PooledAllocator)); // AJE reference
+    }
+  };
+  PUPbytes(PooledAllocator);
 /** @} */
 
 /** @addtogroup nanoflann_metaprog_grp Auxiliary metaprogramming stuff
@@ -745,11 +828,19 @@ public:
  */
 template <int DIM, typename T> struct array_or_vector_selector {
   typedef std::array<T, DIM> container_t;
-};
+    inline void pup(PUP::er& p){
+      p((char *)this, sizeof(array_or_vector_selector));
+    }
+  };
+  PUPbytes(array_or_vector_selector);
 /** Dynamic size version */
 template <typename T> struct array_or_vector_selector<-1, T> {
   typedef std::vector<T> container_t;
-};
+    inline void pup(PUP::er& p){
+      p((char *)this, sizeof(array_or_vector_selector<-1,T>)); // AJE reference
+    }
+  };
+  PUPbytes(array_or_vector_selector<-1,T>);
 
 /** @} */
 
@@ -788,20 +879,42 @@ public:
     union {
       struct leaf {
         IndexType left, right; //!< Indices of points in leaf node
+
+        inline void pup(PUP::er& p){
+          p((char *)this, sizeof(leaf));
+        }
       } lr;
+      PUPbytes(leaf); // AJE
+
       struct nonleaf {
         int divfeat;                  //!< Dimension used for subdivision.
         DistanceType divlow, divhigh; //!< The values used for subdivision.
+
+        inline void pup(PUP::er& p){
+          p((char *)this, sizeof(nonleaf));
+        }
       } sub;
+      PUPbytes(nonleaf); // AJE
+
     } node_type;
     Node *child1, *child2; //!< Child nodes (both=NULL mean its a leaf node)
+
+    inline void pup(PUP::er& p){
+      p((char *)this, sizeof(Node));
+    }
   };
+  PUPbytes(Node);
 
   typedef Node *NodePtr;
 
   struct Interval {
     ElementType low, high;
+
+    inline void pup(PUP::er& p){
+      p((char *)this, sizeof(Interval));
+    }
   };
+  PUPbytes(Interval);
 
   /**
    *  Array of indices to vectors in the dataset.
@@ -1100,7 +1213,12 @@ public:
     load_value(stream, obj.vind);
     load_tree(obj, stream, obj.root_node);
   }
-};
+
+    inline void pup(PUP::er& p){
+      p((char *)this, sizeof(KDTreeBaseClass)); // AJE reference
+    }
+  };
+  PUPbytes(KDTreeBaseClass);
 
 /** @addtogroup kdtrees_grp KD-tree classes and adaptors
  * @{ */
@@ -1454,7 +1572,11 @@ public:
    * examples/saveload_example.cpp \sa loadIndex  */
   void loadIndex(FILE *stream) { this->loadIndex_(*this, stream); }
 
+    inline void pup(PUP::er& p){
+      p((char *)this, sizeof(KDTreeSingleIndexAdaptor)); // AJE reference
+    }
 }; // class KDTree
+PUPbytes(KDTreeSingleIndexAdaptor);
 
 /** kd-tree dynamic index
  *
@@ -1797,7 +1919,12 @@ public:
    * points used while building the index. See the example:
    * examples/saveload_example.cpp \sa loadIndex  */
   void loadIndex(FILE *stream) { this->loadIndex_(*this, stream); }
+
+    inline void pup(PUP::er& p){
+      p((char *)this, sizeof(KDTreeSingleIndexDynamicAdaptor_)); // AJE reference
+    }
 };
+PUPbytes(KDTreeSingleIndexDynamicAdaptor_);
 
 /** kd-tree dynaimic index
  *
@@ -1960,7 +2087,11 @@ public:
     }
     return result.full();
   }
+    inline void pup(PUP::er& p){
+      p((char *)this, sizeof(KDTreeSingleIndexDynamicAdaptor)); // AJE reference
+    }
 };
+PUPbytes(KDTreeSingleIndexDynamicAdaptor);
 
 /** An L2-metric KD-tree adaptor for working with data directly stored in an
  * Eigen Matrix, without duplicating the data storage. Each row in the matrix
@@ -2060,8 +2191,12 @@ public:
   }
 
   /** @} */
-
-}; // end of KDTreeEigenMatrixAdaptor
+    inline void pup(PUP::er& p){
+      p((char *)this, sizeof(KDTreeEigenMatrixAdaptor)); // AJE reference
+    }
+};
+PUPbytes(KDTreeEigenMatrixAdaptor);
+ // end of KDTreeEigenMatrixAdaptor
    /** @} */
 
 /** @} */ // end of grouping

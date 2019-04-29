@@ -5,6 +5,8 @@
 /// @date     2011-03-24
 /// @brief    CHARM++ Enzo process group
 
+#define USE_NANOFLAN
+
 module enzo {
 
   initnode void register_method_turbulence(void);
@@ -43,6 +45,34 @@ module enzo {
 #ifdef CONFIG_USE_GRACKLE
   PUPable EnzoInitialGrackleTest;
   PUPable EnzoMethodGrackle;
+#endif
+
+#ifdef USE_NANOFLAN
+  PUPable nanoflann::PointCloud;
+  PUPable nanoflann::KNNResultSet;
+  PUPable nanoflann::IndexDist_Sorter;
+  PUPable nanoflann::RadiusResultSet;
+  PUPable nanoflann::Metric;
+  PUPable nanoflann::L1_Adaptor;
+  PUPable nanoflann::L2_Adaptor;
+  PUPable nanoflann::L2_Simple_Adaptor;
+  PUPable nanoflann::SO2_Adaptor;
+  PUPable nanoflann::SO3_Adaptor;
+  PUPable nanoflann::metric_L1;
+  PUPable nanoflann::metric_L2;
+  PUPable nanoflann::metric_L2_Simple;
+  PUPable nanoflann::metric_SO2;
+  PUPable nanoflann::metric_SO3;
+  PUPable nanoflann::KDTreeSingleIndexAdaptorParams;
+  PUPable nanoflann::SearchParams;
+  PUPable nanoflann::PooledAllocator;
+  PUPable nanoflann::array_or_vector_selector;
+
+  PUPable nanoflann::KDTreeBaseClass;
+  PUPable nanoflann::KDTreeSingleIndexAdaptor;
+  PUPable nanoflann::KDTreeSingleIndexDynamicAdaptor_;
+  PUPable nanoflann::KDTreeSingleIndexDynamicAdaptor;
+  PUPable nanoflann::KDTreeEigenMatrixAdaptor;
 #endif
 
   PUPable EnzoBoundary;
