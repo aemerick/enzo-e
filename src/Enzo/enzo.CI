@@ -5,7 +5,7 @@
 /// @date     2011-03-24
 /// @brief    CHARM++ Enzo process group
 
-#define USE_NANOFLAN
+//// #define USE_NANOFLAN
 
 module enzo {
 
