@@ -30,7 +30,58 @@
 #include "cello.hpp"
 #include "enzo.hpp"
 
-#include "nanoflann.hpp"
+#define USE_NANOFLANN
+#define MAX_TREE_DIM 3
+
+#ifdef USE_NANOFLANN
+  #include "nanoflann.hpp"
+  using namespace nanoflann;
+
+
+  typedef KDTreeSingleIndexAdaptor<
+                  L2_Simple_Adaptor<double, PointCloud >,
+                  PointCloud,
+                  3, size_t
+                  > my_kd_tree_t;
+
+  //std::vector<my_kd_tree_t > tree_index(3); // hard code this for now
+
+  std::vector<my_kd_tree_t > tree_index;
+  //my_kd_tree_t * tree_index =  new my_kd_tree_t [3];
+
+  void fill_nanoflann_tree(const PointCloud & cloud, const int& treenum){
+    //const size_t dim = 3;
+    //const size_t max_leaf = 10;
+
+    if (treenum >= tree_index.size()){
+      my_kd_tree_t index(3, cloud,
+                          KDTreeSingleIndexAdaptorParams(10));
+      tree_index.push_back(index);
+    }
+    //ASSERT("fill_nanoflann_tree","Need to change tree defualt max", treenum < MAX_TREE_DIM);
+
+    (tree_index[treenum]).buildIndex();
+
+
+    return;
+  };
+
+  size_t get_points_from_tree(const double qp[3], const double r, const int &treenum,
+                            std::vector<std::pair<size_t, double> > & ret_matches){
+
+     SearchParams params; // can modify these , but leave as default
+
+     // perform a radius search
+
+     const size_t npoints =
+             tree_index[treenum].radiusSearch(&qp[0], r, ret_matches, params);
+
+
+     return npoints;
+  }
+
+#endif
+
 
 //----------------------------------------------------------------------
 #define DEBUG_PERFORMANCE
@@ -215,7 +266,9 @@ void EnzoInitialIsolatedGalaxy::pup (PUP::er &p)
   // Pup particle IC arrays element by element
   for (int k = 0; k < ntypes_; k++){
     for (int j = 0; j < ndim_; j ++){
+#ifndef USE_NANOFLANN
       PUParray(p, particleIcPosition[k][j], nparticles_);
+#endif
       PUParray(p, particleIcVelocity[k][j], nparticles_);
     }
     PUParray(p, particleIcMass[k], nparticles_);
@@ -270,6 +323,8 @@ void EnzoInitialIsolatedGalaxy::enforce_block
 #ifdef CONFIG_USE_GRACKLE
   /* Assign grackle chemistry fields to default fractions based on density */
   const size_t num_method = enzo_config->method_list.size();
+   //particlePointCloud[pcindex].pts[i].x += this->center_position_[0];
+   //.size();
 
   for (size_t index_method=0; index_method < num_method ; index_method++) {
     std::string name = enzo_config->method_list[index_method];
@@ -628,7 +683,11 @@ void EnzoInitialIsolatedGalaxy::InitializeGasFromParticles(Block * block){
   // Now loop over all particles and deposit
   int np = nlines(particleIcFileNames[ipt]);
 
+
   for (int ip = 0; ip < np; ip++){
+
+#ifndef USE_NANOFLANN
+  // AJE NEED TO THROW ERROR HERE OR SOMETHING
 
     if ( !(block->check_position_in_block(particleIcPosition[ipt][0][ip],
                                           particleIcPosition[ipt][1][ip],
@@ -642,6 +701,10 @@ void EnzoInitialIsolatedGalaxy::InitializeGasFromParticles(Block * block){
     double xp = (particleIcPosition[ipt][0][ip] - xm) / hx;
     double yp = (particleIcPosition[ipt][1][ip] - ym) / hy;
     double zp = (particleIcPosition[ipt][2][ip] - zm) / hz;
+#else
+    double xp,yp,zp;
+    // DOES NOT WORK
+#endif
 
     // get 3D grid index for particle - account for ghost zones!!
     int ix = ((int) std::floor(xp))  + gx;
@@ -808,8 +871,52 @@ void EnzoInitialIsolatedGalaxy::InitializeParticles(Block * block,
     enzo_float * plifetime = 0;
     enzo_float * pform     = 0;
 
+
+#ifdef USE_NANOFLANN
+    // place code here from test.cpp to get array list of particles
+    // from nanoflann (left off here)
+
+    // then add code into nanoflann to set up the locally defined
+    // particle trees (need to somehow enable it to define an arbitrary
+    // number of trees (or hard-code 3) and then write a function to
+    // call to fill tree:
+    //           maybe
+    //           fill_tree(pointCloud[tree_num], tree_num);
+    //   or just have this be a local function?
+    //           and
+
+    // block center coordinates
+    double lower[3], upper[3], hx,hy,hz;
+    block->data()->lower(&lower[0],&lower[1],&lower[2]);
+    block->data()->upper(&upper[0],&upper[1],&upper[2]);
+    block->cell_width(&hx,&hy,&hz);
+
+    double query_point[3];
+    double radius = 0.0;
+    for (int dim = 0; dim < 3; dim++){
+      query_point[dim] = (lower[dim] + upper[dim])*0.5;
+
+      radius += ((upper[dim] - lower[dim]) * (upper[dim] - lower[dim]));
+    }
+    radius = 0.5 * (std::sqrt(radius)); // + std::max( std::max(hx,hy), hz)); // 1/2 of diagonal + 1/2 of a cell
+
+    std::vector<std::pair<size_t, double> > tree_particles;
+    // std::cout << " ipt" << ipt << radius << query_point[0] << query_point[1] << query_point[2] << "\n";
+    const size_t nMatches =
+                get_points_from_tree(query_point,
+                                     radius, ipt, tree_particles);
+
+    // now loop over particle indices
+    for (int itree = 0; itree < nMatches; itree++){
+
+      int i = tree_particles[itree].first; // actual index of particle
+
+      //cout << "init i" << i;
+#else
     // now loop over all particles
     for (int i = 0; i < np; i ++){
+
+#endif
       ASSERT("EnzoInitialIsolatedGalaxy",
              "Attempting to initialize a particle with negative mass",
               particleIcMass[ipt][i] > 0);
@@ -818,9 +925,15 @@ void EnzoInitialIsolatedGalaxy::InitializeParticles(Block * block,
       //    AE:  Note, I'm not sure if this is needed (it is in Enzo),
       //         but there may be a smarter way to do this for Enzo-E
       //   - only check for active region (particles in ghost zones belong on other grids)
+#ifdef USE_NANOFLANN
+      if (!(block->check_position_in_block(particlePointCloud[ipt].pts[i].x,
+                                           particlePointCloud[ipt].pts[i].y,
+                                           particlePointCloud[ipt].pts[i].z  ))){
+#else
       if (!(block->check_position_in_block(particleIcPosition[ipt][0][i],
                                            particleIcPosition[ipt][1][i],
                                            particleIcPosition[ipt][2][i]))){
+#endif
         continue;
       }
 
@@ -839,9 +952,15 @@ void EnzoInitialIsolatedGalaxy::InitializeParticles(Block * block,
 
       // set the particle values
       pmass[ipp] = particleIcMass[ipt][i];
+#ifdef USE_NANOFLANN
+      px[ipp]    = particlePointCloud[ipt].pts[i].x;
+      py[ipp]    = particlePointCloud[ipt].pts[i].y;
+      pz[ipp]    = particlePointCloud[ipt].pts[i].z;
+#else
       px[ipp]    = particleIcPosition[ipt][0][i];
       py[ipp]    = particleIcPosition[ipt][1][i];
       pz[ipp]    = particleIcPosition[ipt][2][i];
+#endif
       pvx[ipp]   = particleIcVelocity[ipt][0][i];
       pvy[ipp]   = particleIcVelocity[ipt][1][i];
       pvz[ipp]   = particleIcVelocity[ipt][2][i];
@@ -939,7 +1058,11 @@ void EnzoInitialIsolatedGalaxy::ReadParticlesFromFile_(const int &nl,
                                                        const int &ipt){
 
    this->ReadParticlesFromFile(nl,
+           #ifdef USE_NANOFLANN
+                               ipt,
+           #else
                                particleIcPosition[ipt],
+           #endif
                                particleIcVelocity[ipt],
                                particleIcMass[ipt],
                                particleIcFileNames[ipt]);
@@ -985,7 +1108,11 @@ void EnzoInitialIsolatedGalaxy::ReadParticlesFromFile_(const int &nl,
 }
 
 void EnzoInitialIsolatedGalaxy::ReadParticlesFromFile(const int& nl,
+                                        #ifdef USE_NANOFLANN
+                                                      const int& pcindex,
+                                        #else
                                                       enzo_float ** position,
+                                        #endif
                                                       enzo_float ** velocity,
                                                       enzo_float * mass,
                                                       const std::string& filename){
@@ -1014,8 +1141,29 @@ void EnzoInitialIsolatedGalaxy::ReadParticlesFromFile(const int& nl,
   }
 
 
+#ifdef USE_NANOFLANN
+  if (particlePointCloud.size() <= pcindex){
+    ASSERT("EnzoInitialIsolatedGalaxy",
+           "point cloud sizing is incorrect",
+           particlePointCloud.size() >= pcindex);
+
+    // bad form:
+    particlePointCloud.resize( particlePointCloud.size() + 1);
+  }
+
+  // allocate space for these particles in new cloud
+  particlePointCloud[pcindex].pts.resize(nl);
+#endif
+
   while(inFile >>
+#ifdef USE_NANOFLANN
+        particlePointCloud[pcindex].pts[i].x >>
+        particlePointCloud[pcindex].pts[i].y >>
+        particlePointCloud[pcindex].pts[i].z >>
+#else
         position[0][i] >> position[1][i] >> position[2][i] >>
+#endif
+
         velocity[0][i] >> velocity[1][i] >> velocity[2][i] >>
         mass[i]){
     ASSERT("EnzoInitialIsolatedGalaxy",
@@ -1025,12 +1173,23 @@ void EnzoInitialIsolatedGalaxy::ReadParticlesFromFile(const int& nl,
     // velocities in km / s
     // mass in Msun
 
+#ifdef USE_NANOFLANN
+      double conv = lu / enzo_units->length();
+      particlePointCloud[pcindex].pts[i].x *= conv;
+      particlePointCloud[pcindex].pts[i].y *= conv;
+      particlePointCloud[pcindex].pts[i].z *= conv;
 
+      particlePointCloud[pcindex].pts[i].x += this->center_position_[0];
+      particlePointCloud[pcindex].pts[i].y += this->center_position_[1];
+      particlePointCloud[pcindex].pts[i].z += this->center_position_[2];
+#endif
 
     for (int dim = 0; dim < cello::rank(); dim++){
 
+#ifndef USE_NANOFLANN
       position[dim][i] = position[dim][i] * lu  /
                                enzo_units->length() + this->center_position_[dim];
+#endif
       velocity[dim][i] = velocity[dim][i] * 1000.0 /
                                enzo_units->velocity();
     }
@@ -1041,6 +1200,11 @@ void EnzoInitialIsolatedGalaxy::ReadParticlesFromFile(const int& nl,
   }
 
   inFile.close();
+
+
+#ifdef USE_NANOFLANN
+   fill_nanoflann_tree(particlePointCloud[pcindex], pcindex);
+#endif
 
   return;
  }

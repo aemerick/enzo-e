@@ -1,7 +1,76 @@
 #ifndef ENZO_ENZO_INITIAL_ISOLATED_GALAXY_HPP
 #define ENZO_ENZO_INITIAL_ISOLATED_GALAXY_HPP
 
+#define USE_NANOFLANN
+
+#ifdef USE_NANOFLANN
+  //#include "nanoflann.hpp"
+
+struct Point
+{
+  double x,y,z;
+
+/*
+  inline void pup(PUP::er &p){
+    p | x;
+    p | y;
+    p | z;
+  }
+
+  PUPable_decl(Point);
+*/
+};
+
+struct PointCloud
+{
+
+  std::vector<Point>  pts;
+
+  // Must return the number of data points
+  inline size_t kdtree_get_point_count() const { return pts.size(); }
+
+  // Returns the dim'th component of the idx'th point in the class:
+  // Since this is inlined and the "dim" argument is typically an immediate value, the
+  //  "if/else's" are actually solved at compile time.
+  inline double kdtree_get_pt(const size_t idx, const size_t dim) const
+  {
+          if (dim == 0) return pts[idx].x;
+          else if (dim == 1) return pts[idx].y;
+          else return pts[idx].z;
+  }
+
+  // Optional bounding-box computation: return false to default to a standard bbox computation loop.
+  //   Return true if the BBOX was already computed by the class and returned in "bb" so it can be avoided to redo it again.
+  //   Look at bb.size() to find out the expected dimensionality (e.g. 2 or 3 for point clouds)
+  template <class BBOX>
+  bool kdtree_get_bbox(BBOX& /* bb */) const { return false; }
+
+/*
+  inline void pup(PUP::er &p){
+    p | pts;
+  }
+
+  PUPable_decl(PointCloud);
+*/
+};
+
+
+inline void operator|(PUP::er &p, Point &pt){
+  p | pt.x;
+  p | pt.y;
+  p | pt.z;
+}
+
+inline void operator|(PUP::er &p, PointCloud &ptc){
+  p | ptc.pts;
+}
+
+
+#endif
+
+
 class EnzoInitialIsolatedGalaxy : public Initial {
+
 
 private:
 
@@ -13,7 +82,13 @@ private:
   //    2        : dimension (x,y,z)
   //    3        : particle(s)
   //    mass is 2D and has just dimensions 1 and 3
+
+#ifdef USE_NANOFLANN
+  std::vector<PointCloud> particlePointCloud;
+#else
   enzo_float *** particleIcPosition;
+#endif
+
   enzo_float *** particleIcVelocity;
   enzo_float **  particleIcMass;
   enzo_float **  particleIcLifetime;
@@ -25,7 +100,9 @@ private:
   void allocateParticles(void){
 
     if (ntypes_ == 0){
+#ifndef USE_NANOFLANN
       particleIcPosition     = NULL;
+#endif
       particleIcVelocity     = NULL;
       particleIcTypes        = NULL;
       particleIcMass         = NULL;
@@ -34,7 +111,11 @@ private:
       return;
     }
 
+#ifdef USE_NANOFLANN
+    particlePointCloud.resize(ntypes_);
+#else
     particleIcPosition  = new enzo_float **[ntypes_];
+#endif
     particleIcVelocity  = new enzo_float **[ntypes_];
     particleIcMass      = new enzo_float  *[ntypes_];
     particleIcCreationTime = new enzo_float *[ntypes_];
@@ -43,15 +124,21 @@ private:
     if (!(particleIcTypes)) particleIcTypes = new int[ntypes_];
 
     for (int k = 0; k < ntypes_; k++){
+#ifndef USE_NANOFLANN
       particleIcPosition[k] = new enzo_float*[ndim_];
+#endif
       particleIcVelocity[k]  = new enzo_float*[ndim_];
 
       for(int j = 0; j < ndim_; j++){
+#ifndef USE_NANOFLANN
         particleIcPosition[k][j] = new enzo_float[nparticles_];
+#endif
         particleIcVelocity[k][j] = new enzo_float[nparticles_];
 
         for (int i = 0; i < nparticles_; i++){
+#ifndef USE_NANOFLANN
           particleIcPosition[k][j][i] = -1.0;
+#endif
           particleIcVelocity[k][j][i] = -1.0;
         }
       }
@@ -72,10 +159,14 @@ private:
 
     for (int k=0; k < ntypes_; k++){
       for (int j = 0; j < ndim_; j ++){
+#ifndef USE_NANOFLANN
         delete [] particleIcPosition[k][j];
+#endif
         delete [] particleIcVelocity[k][j];
       }
+#ifndef USE_NANOFLANN
       particleIcPosition[k] = NULL;
+#endif
       particleIcVelocity[k] = NULL;
 
       delete [] particleIcMass;
@@ -85,7 +176,12 @@ private:
 
     delete [] particleIcTypes;
 
+#ifdef USE_NANOFLANN
+    particlePointCloud.clear();
+    //particlePointCloud.erase();
+#else
     particleIcPosition = NULL;
+#endif
     particleIcVelocity = NULL;
     particleIcMass     = NULL;
     particleIcTypes    = NULL;
@@ -127,9 +223,14 @@ public: // interface
 
   /// Read in particle data (DM and stars)
   void ReadParticlesFromFile_(const int&nl, const int& ipt);
-  
+
   void ReadParticlesFromFile(const int& nl,
-                             enzo_float *position[], enzo_float *velocity[],
+                      #ifdef USE_NANOFLANN
+                             const int& pcindex,
+                      #else
+                             enzo_float *position[],
+                      #endif
+                             enzo_float *velocity[],
                              enzo_float *mass, const std::string& filename);
 
   /// Read in circular velocity table
@@ -147,7 +248,7 @@ public: // interface
 
   /// Destructor
   virtual ~EnzoInitialIsolatedGalaxy(void) throw() {
-    if (particleIcPosition) freeParticles();
+    if (particleIcVelocity) freeParticles();
   };
 
 private: // attributes
@@ -193,5 +294,6 @@ private: // attributes
   int recent_SF_seed;
 
 };
+
 
 #endif /* ENZO_ENZO_INITIAL_ISOLATED_GALAXY_HPP */
