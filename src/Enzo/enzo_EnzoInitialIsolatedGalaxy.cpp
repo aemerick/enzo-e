@@ -902,6 +902,9 @@ void EnzoInitialIsolatedGalaxy::InitializeParticles(Block * block,
 
     std::vector<std::pair<size_t, double> > tree_particles;
     // std::cout << " ipt" << ipt << radius << query_point[0] << query_point[1] << query_point[2] << "\n";
+    // RADIUS MUST BE PASSED USING L2NORM WITH STANDARD SETTINGS - so, square it... (a little annoying)
+
+    radius = ( radius * radius );
     const size_t nMatches =
                 get_points_from_tree(query_point,
                                      radius, ipt, tree_particles);
