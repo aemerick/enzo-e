@@ -1,7 +1,7 @@
 #ifndef ENZO_ENZO_INITIAL_ISOLATED_GALAXY_HPP
 #define ENZO_ENZO_INITIAL_ISOLATED_GALAXY_HPP
 
-#define USE_NANOFLANN
+//#define USE_NANOFLANN
 
 #ifdef USE_NANOFLANN
   //#include "nanoflann.hpp"

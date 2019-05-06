@@ -30,7 +30,7 @@
 #include "cello.hpp"
 #include "enzo.hpp"
 
-#define USE_NANOFLANN
+//#define USE_NANOFLANN
 #define MAX_TREE_DIM 3
 
 #ifdef USE_NANOFLANN
@@ -293,7 +293,9 @@ void EnzoInitialIsolatedGalaxy::enforce_block
   //
   // Make sure we can operate on this block
   //
-  if (!block->is_leaf()) return;
+  // now initialize particles
+
+  // if (!block->is_leaf()) return;
 
   Timer timer;
   timer.start();
@@ -303,6 +305,16 @@ void EnzoInitialIsolatedGalaxy::enforce_block
          block != NULL);
 
    EnzoBlock * enzo_block = enzo::block(block);
+
+   if (enzo_block->level() == 0){ // only do on level 0
+    std::cout << "block-name: " << enzo_block->name().c_str() << "\n";
+
+    Particle particle = block->data()->particle();
+    InitializeParticles(block, &particle);
+   }
+
+//   if (!block->is_leaf()) return; // only do gas ICs if leaf actually --- maybe not...
+
 
 #ifdef CONFIG_USE_GRACKLE
    grackle_field_data grackle_fields_;
@@ -351,8 +363,8 @@ void EnzoInitialIsolatedGalaxy::enforce_block
   }
 
   // now initialize particles
-  Particle particle = block->data()->particle();
-  InitializeParticles(block, &particle);
+  // Particle particle = block->data()->particle();
+  // InitializeParticles(block, &particle);
 
 #ifdef CONFIG_USE_GRACKLE
   EnzoMethodGrackle::delete_grackle_fields(&grackle_fields_);
@@ -873,18 +885,6 @@ void EnzoInitialIsolatedGalaxy::InitializeParticles(Block * block,
 
 
 #ifdef USE_NANOFLANN
-    // place code here from test.cpp to get array list of particles
-    // from nanoflann (left off here)
-
-    // then add code into nanoflann to set up the locally defined
-    // particle trees (need to somehow enable it to define an arbitrary
-    // number of trees (or hard-code 3) and then write a function to
-    // call to fill tree:
-    //           maybe
-    //           fill_tree(pointCloud[tree_num], tree_num);
-    //   or just have this be a local function?
-    //           and
-
     // block center coordinates
     double lower[3], upper[3], hx,hy,hz;
     block->data()->lower(&lower[0],&lower[1],&lower[2]);
