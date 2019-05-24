@@ -191,7 +191,7 @@ c$DOACROSS LOCAL(k)
      &             tmp(1+ms*28),tmp(1+ms*29),
      &             tmp(1+ms*(30+0*ncolor)),tmp(1+ms*(30+1*ncolor)), 
      &             tmp(1+ms*(30+2*ncolor)),tmp(1+ms*(30+3*ncolor))
-#endif            
+#endif
      &             )
            enddo
         endif
@@ -233,7 +233,7 @@ c$DOACROSS LOCAL(i)
      &             tmp(1+ms*28),tmp(1+ms*29),
      &             tmp(1+ms*(30+0*ncolor)),tmp(1+ms*(30+1*ncolor)), 
      &             tmp(1+ms*(30+2*ncolor)),tmp(1+ms*(30+3*ncolor))
-#endif            
+#endif
      &             )
            enddo
 c     
@@ -276,7 +276,7 @@ c$DOACROSS LOCAL(j)
      &             tmp(1+ms*28),tmp(1+ms*29),
      &             tmp(1+ms*(30+0*ncolor)),tmp(1+ms*(30+1*ncolor)), 
      &             tmp(1+ms*(30+2*ncolor)),tmp(1+ms*(30+3*ncolor))
-#endif            
+#endif
      &             )
            enddo
         endif

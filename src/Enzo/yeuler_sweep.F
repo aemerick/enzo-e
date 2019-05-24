@@ -26,7 +26,7 @@ c
      &     wf, grslice, geslice, gef,
 #ifdef NEW_PPM
      &     ges,
-#endif      
+#endif
      &     colslice, colf, colls, colrs
      &     )
 c     
@@ -141,7 +141,7 @@ c
       ENZO_REAL array(1), colorpt(1)
 #ifdef NEW_PPM
       integer iriemannfallback
-#endif      
+#endif
 c
 c  define local slices (passed as temps)
 c
@@ -155,7 +155,7 @@ c
      &     gef(jn,kn),   gels(jn,kn),   gers(jn,kn)
 #ifdef NEW_PPM
       ENZO_REAL ges(jn,kn)
-#endif      
+#endif
       ENZO_REAL dslice(jn,kn), eslice(jn,kn),grslice(jn,kn),
      &      uslice(jn,kn), vslice(jn,kn), wslice(jn,kn),
      &     geslice(jn,kn)
@@ -217,16 +217,16 @@ c
 c  Compute the pressure on a slice
 c
       if (idual .eq. 1) then
-#ifdef NEW_PPM         
+#ifdef NEW_PPM
          call pgas2d_dual_dev(
 #else
          call pgas2d_dual(
-#endif         
+#endif
      &        dslice, eslice, geslice, pslice, 
      &        uslice, vslice, wslice, eta1, eta2,
      &        jn, kn, js-3, je+3, k1, k2, gamma, pmin)
       else
-#ifdef NEW_PPM         
+#ifdef NEW_PPM
          call pgas2d_dev(
 #else
          call pgas2d(
@@ -238,7 +238,7 @@ c
 c  If requested, compute diffusion and slope flattening coefficients
 c
       if (idiff .ne. 0 .or. iflatten .ne. 0)
-#ifdef NEW_PPM         
+#ifdef NEW_PPM
      &     call calcdiss_dev(
 #else
      &     call calcdiss(
@@ -251,18 +251,18 @@ c
 c
 c  Compute Eulerian left and right states at zone edges via interpolation
 c
-#ifdef NEW_PPM      
+#ifdef NEW_PPM
       call inteuler_dev(
 #else
       call inteuler(
-#endif      
+#endif
      &     dslice, pslice, gravity, grslice, geslice,
      &     uslice, vslice, wslice, dy, flatten,
      &     jn, kn, js, je, k1, k2, idual, eta1, eta2,
      &     isteepen, iflatten,
-#ifdef NEW_PPM      
+#ifdef NEW_PPM
      &     iconsrec, iposrec,
-#endif      
+#endif
      &     dt, gamma, ipresfree,
      &     dls, drs, pls, prs, gels, gers,
      &     uls, urs, vls, vrs, wls, wrs,
@@ -273,9 +273,9 @@ c  Compute (Lagrangian part of the) Riemann problem at each zone boundary
 c
 #ifdef NEW_PPM
       call twoshock_dev(
-#else      
+#else
       call twoshock(
-#endif      
+#endif
      &     dls, drs, pls, prs, uls, urs, 
      &     jn, kn, js, je+1, k1, k2, 
      &     dt, gamma, pmin, ipresfree,

@@ -26,7 +26,7 @@ c
      &     wf, grslice, geslice, gef,
 #ifdef NEW_PPM
      &     ges,
-#endif      
+#endif
      &     colslice, colf, colls, colrs
      &     )
 c     
@@ -140,7 +140,7 @@ c
       ENZO_REAL    array(1), colorpt(1)
 #ifdef NEW_PPM
       integer iriemannfallback
-#endif      
+#endif
 c
 c  define local slices (passed as temps)
 c
@@ -154,7 +154,7 @@ c
      &     geslice(kn,in),    gef(kn,in)
 #ifdef NEW_PPM
       ENZO_REAL ges(kn,in)
-#endif      
+#endif
       ENZO_REAL gels(kn,in),   gers(kn,in),
      &     df(kn,in),     ef(kn,in),grslice(kn,in),
      &     uf(kn,in),     vf(kn,in),     wf(kn,in)
@@ -250,18 +250,18 @@ c
 c     
 c  Compute Eulerian left and right states at zone edges via interpolation
 c
-#ifdef NEW_PPM      
+#ifdef NEW_PPM
       call inteuler_dev(
 #else
       call inteuler(
-#endif      
+#endif
      &     dslice, pslice, gravity, grslice, geslice,
      &     uslice, vslice, wslice, dz, flatten,
      &     kn, in, ks, ke, i1, i2, idual, eta1, eta2,
      &     isteepen, iflatten,
-#ifdef NEW_PPM      
+#ifdef NEW_PPM
      &     iconsrec, iposrec,
-#endif      
+#endif
      &     dt, gamma, ipresfree,
      &     dls, drs, pls, prs, gels, gers,
      &     uls, urs, vls, vrs, wls, wrs,
@@ -301,7 +301,7 @@ c
 c
 c  Compute Eulerian fluxes and update zones-centered quantities
 c
-#ifdef NEW_PPM      
+#ifdef NEW_PPM
       call euler_dev   (
 #else
       call euler   (
